@@ -2,6 +2,9 @@ import boto3
 import logging
 from configparser import ConfigParser
 from pathlib import Path, PurePath
+from datetime import datetime
+
+# TODO: add user prompt/ flag for checking access key age, and offer to replace the access key
 
 
 class AwsCredentials:
@@ -10,6 +13,7 @@ class AwsCredentials:
         self.no_mfa_profile = f"{self.profile}-no-mfa"
         self.iam_client = self._set_aws_profile(profile, "iam")
         self.sts_client = self._set_aws_profile(profile, "sts")
+        self.username = self.iam_client.get_user()["User"]["UserName"]
         self.creds_file_path = (
             PurePath(creds_file_path)
             if creds_file_path
@@ -40,8 +44,7 @@ class AwsCredentials:
         return config
 
     def get_mfa_serial(self):
-        username = self.iam_client.get_user()["User"]["UserName"]
-        resp = self.iam_client.list_mfa_devices(UserName=username)
+        resp = self.iam_client.list_mfa_devices(UserName=self.username)
         if resp["MFADevices"]:
             return resp["MFADevices"][0][
                 "SerialNumber"
@@ -55,6 +58,24 @@ class AwsCredentials:
             SerialNumber=self.get_mfa_serial(),
             TokenCode=token,
         )
+
+    def get_access_key_age(self):
+        access_key = self.load_creds_file()[self.no_mfa_profile]["aws_access_key_id"]
+        resp = self.iam_client.list_acces_keys(UserName=self.username)[
+            "AccessKeyMetadata"
+        ]
+        for key in resp:
+            if key["AccessKeyId"] == access_key:
+                created = key["CreateDate"].replase(tzinfo=None)
+                now = datetime.utcnow()  # Returned datetime uses utc timezone
+                diff = now - created
+                return diff.days
+            else:
+                logging.error("No access key found for user %s" % self.username)
+
+    def update_access_keys(self):
+        """Update the non-MFA access keys"""
+        pass
 
     def update_credentials(self, aws_config, new_credentials):
         if not self.mfa_enabled:
