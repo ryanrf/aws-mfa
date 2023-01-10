@@ -116,16 +116,17 @@ class AwsCredentials:
                 )  #  The major error to avoid here would be if the access key limit were exceeded but that cannot happen if an access key was just deleted
                 if create_resp["ResponseMetadata"]["HTTPStatusCode"] == 200:
                     new_access_key = create_resp["AccessKey"]["AccessKeyId"]
-                    self.aws_credentials_config[self.profile][
-                        "aws_access_key_id"
-                    ] = new_access_key
-                    self.aws_credentials_config[self.profile][
-                        "aws_secret_access_key"
-                    ] = create_resp["AccessKey"]["SecretAccessKey"]
+                    self.aws_credentials_config[self.no_mfa_profile] = {
+                        "aws_access_key_id": new_access_key,
+                        "aws_secret_access_key": create_resp["AccessKey"][
+                            "SecretAccessKey"
+                        ],
+                    }
                     self.logger.info(
                         "Successfully created new access key with ID %s"
                         % new_access_key
                     )
+                    self.write_creds(self.aws_credentials_config)
                     return
                 else:
                     self.logger.error(
@@ -154,22 +155,30 @@ class AwsCredentials:
             "aws_session_token": new_credentials["Credentials"]["SessionToken"],
         }
         self.write_creds(self.aws_credentials_config)
-        self.logger.info(
-            "Credentials successfully written to %s" % self.creds_file_path
-        )
 
     def write_creds(self, aws_creds_config) -> None:
         self.logger.info("Writing new credentials to %s" % self.creds_file_path)
         with open(self.creds_file_path, "w") as aws_creds:
             aws_creds_config.write(aws_creds)
+        self.logger.info(
+            "Credentials successfully written to %s" % self.creds_file_path
+        )
 
 
 def user_prompt(
-    msg: str, valid_ans: list[str], logger: logging.Logger = logging.getLogger()
+    msg: str,
+    valid_ans: list[str] = ["yes", "no"],
+    affirmative: str = "yes",
 ):
+    if affirmative not in valid_ans:
+        raise ValueError("%s is not in %s" % (affirmative, valid_ans))
     msg = f"{msg}[{'/'.join(valid_ans)}] "
+    # Picking an arbitrary range to avoid any chance of getting stuck in a loop
     for i in range(5):
-        user_input = input(msg)
-        if user_input.strip() in valid_ans:
-            return user_input
-    print(f"Invalid user input. Allowed values: {valid_ans}")
+        user_input = input(msg).strip()
+        if user_input in valid_ans and user_input == affirmative:
+            return True
+        elif user_input in valid_ans and user_input != affirmative:
+            return False
+        print(f"Invalid user input. Allowed values: {valid_ans}")
+    return False

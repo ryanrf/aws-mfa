@@ -70,22 +70,21 @@ def main(token, duration, profile, credentials, verbose, force):
     )
     print("Temporary credentials successfully generated")
     access_key_age = aws_credentials.get_access_key_age()
-    update_non_mfa_access_keys = (
-        access_key_age and access_key_age > ACCESS_KEY_AGE_LIMIT_DAYS
-    ) or force
-    if update_non_mfa_access_keys:
+    update = None
+    if (access_key_age and access_key_age > ACCESS_KEY_AGE_LIMIT_DAYS) or force:
         if not force:
             print(f"\nLooks like your access key is {access_key_age} days old.")
             update = user_prompt(
-                msg="Would you like to update your access keys now?",
-                valid_ans=["yes", "no"],
-                logger=logger,
+                prompt="Would you like to update your access keys now?"
             )
-            if update.strip() != "yes":
-                print("Not updating access key at this time")
-                return
+        if force:
+            update = user_prompt(
+                msg="Are you sure you want to update your non-MFA access keys?"
+            )
+        if not update:
+            print("Not updating non-MFA access keys")
+            return
         aws_credentials.update_access_keys()
-        aws_credentials.write_creds(aws_credentials.aws_credentials_config)
         print("Non-MFA access keys have been successfully replaced")
 
 
