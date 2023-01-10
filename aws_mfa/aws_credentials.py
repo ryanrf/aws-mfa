@@ -5,7 +5,6 @@ from pathlib import Path, PurePath
 from datetime import datetime
 from typing import Optional
 
-# TODO: add user prompt/ flag for checking access key age, and offer to replace the access key
 # Also need to consider handling AWS env var, or at least alerting users when they exist
 
 
@@ -72,7 +71,7 @@ class AwsCredentials:
         profile = self.no_mfa_profile if not profile else profile
         self.mfa_iam_client = self._set_aws_profile(self.profile, "iam")
         try:
-            self.access_key = self.load_creds_file()[profile]["aws_access_key_id"]
+            access_key = self.aws_credentials_config[profile]["aws_access_key_id"]
         except KeyError:
             raise KeyError(
                 "section %s not found in %s" % (profile, str(self.creds_file_path))
@@ -81,13 +80,12 @@ class AwsCredentials:
             "AccessKeyMetadata"
         ]
         for key in resp:
-            if key["AccessKeyId"] == self.access_key:
+            if key["AccessKeyId"] == access_key.strip():
                 created = key["CreateDate"].replace(tzinfo=None)
                 now = datetime.utcnow()  # Returned datetime uses utc timezone
                 diff = now - created
                 return diff.days
-            else:
-                self.logger.error("No access key found for user %s" % self.username)
+        self.logger.error("No access key found for user %s" % self.username)
 
     def update_access_keys(self) -> None:
         """Update the non-MFA access keys by deleting them then creating new ones"""
