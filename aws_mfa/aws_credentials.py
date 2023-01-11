@@ -16,23 +16,33 @@ class AwsCredentials:
         logger: logging.Logger = logging.getLogger(),
     ):
         self.logger = logger
-        self.profile = "default" if not profile else profile
-        self.no_mfa_profile = f"{self.profile}-no-mfa"
-        self.iam_client = self._set_aws_profile(profile, "iam")
-        self.sts_client = self._set_aws_profile(profile, "sts")
-        self.mfa_iam_client = None
-        self.username = self.iam_client.get_user()["User"]["UserName"]
         self.creds_file_path = (
             PurePath(creds_file_path)
             if creds_file_path
             else PurePath(Path.home(), ".aws/credentials")
         )
+        self.profile = "default" if not profile else profile
+        self.no_mfa_profile = f"{self.profile}-no-mfa"
         self.mfa_enabled = False
+        self.iam_client = self._set_aws_profile(self.profile, "iam")
+        self.sts_client = self._set_aws_profile(self.profile, "sts")
         self.aws_credentials_config = self.load_creds_file()
+        self.mfa_iam_client = None
+        self.username = self.iam_client.get_user()["User"]["UserName"]
 
     def _set_aws_profile(self, profile: str, svc: str) -> boto3.client:
         session = boto3.Session(profile_name=profile)
+        self.logger.info("Using profile: %s with service %s" % (profile, svc))
         return session.client(svc)
+
+    def _check_mfa_enabled(self, credentials_config: ConfigParser = None):
+        if not credentials_config:
+            credentials_config = self.aws_credentials_config
+        return (
+            self.no_mfa_profile in credentials_config.sections()
+            and self.profile in credentials_config.sections()
+            and "aws_session_token" in credentials_config[self.profile]
+        )
 
     def _mfa_is_enabled(self) -> None:
         self.iam_client = self._set_aws_profile(self.no_mfa_profile, "iam")
@@ -43,7 +53,7 @@ class AwsCredentials:
         self.logger.info("Using %s as AWS credentials path" % self.creds_file_path)
         config = ConfigParser()
         config.read(str(self.creds_file_path))
-        if self.no_mfa_profile in config.sections():
+        if self._check_mfa_enabled(config):
             self.logger.info("MFA profile already exists in AWS credentials file")
             self._mfa_is_enabled()
         return config
@@ -92,11 +102,7 @@ class AwsCredentials:
         if not self.mfa_iam_client:
             self.mfa_iam_client = self._set_aws_profile(self.profile, "iam")
         # If there is a 'no_mfa_profile' section and there is a session token in the profile we can assume this tool has been run
-        if (
-            self.no_mfa_profile in self.aws_credentials_config.sections()
-            and self.profile in self.aws_credentials_config.sections()
-            and "aws_session_token" in self.aws_credentials_config[self.profile]
-        ):
+        if self._check_mfa_enabled:
             access_key = self.aws_credentials_config[self.no_mfa_profile][
                 "aws_access_key_id"
             ]
@@ -149,6 +155,10 @@ class AwsCredentials:
             self.aws_credentials_config[
                 self.no_mfa_profile
             ] = self.aws_credentials_config[self.profile]
+        self.logger.info(
+            "Updating temporary credentials for profile %s with access key %s"
+            % (self.profile, new_credentials["Credentials"]["AccessKeyId"])
+        )
         self.aws_credentials_config[self.profile] = {
             "aws_access_key_id": new_credentials["Credentials"]["AccessKeyId"],
             "aws_secret_access_key": new_credentials["Credentials"]["SecretAccessKey"],
