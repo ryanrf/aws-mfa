@@ -1,5 +1,7 @@
 import boto3
 import logging
+from os import environ
+from sys import exit
 from configparser import ConfigParser
 from pathlib import Path, PurePath
 from datetime import datetime
@@ -16,6 +18,12 @@ class AwsCredentials:
         logger: logging.Logger = logging.getLogger(),
     ):
         self.logger = logger
+        env_var_creds = environ.get("AWS_ACCESS_KEY_ID")
+        if env_var_creds:
+            self.logger.error(
+                f"AWS environment variables detected. Found access key {env_var_creds}. Please unset those environment variables before running this tool."
+            )
+            exit(1)
         self.creds_file_path = (
             PurePath(creds_file_path)
             if creds_file_path
@@ -35,7 +43,7 @@ class AwsCredentials:
         self.logger.info("Using profile: %s with service %s" % (profile, svc))
         return session.client(svc)
 
-    def _check_mfa_enabled(self, credentials_config: ConfigParser = None):
+    def _check_mfa_enabled(self, credentials_config: ConfigParser = None) -> None:
         if not credentials_config:
             credentials_config = self.aws_credentials_config
         return (
