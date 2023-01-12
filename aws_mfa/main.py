@@ -87,7 +87,7 @@ def main(token, duration, profile, credentials, verbose, force):
         )
         exit(1)
     try:
-        aws_credentials.update_credentials(
+        aws_credentials.update_mfa_credentials(
             new_credentials=aws_credentials.get_credentials(duration, token)
         )
     except NoMfaDeviceFound:

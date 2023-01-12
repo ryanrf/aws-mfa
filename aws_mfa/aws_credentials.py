@@ -159,7 +159,8 @@ class AwsCredentials:
                     % (access_key, del_resp["ResponseMetadata"])
                 )
 
-    def update_credentials(self, new_credentials) -> None:
+    def update_mfa_credentials(self, new_credentials) -> None:
+        """Update the MFA credentials - the one that uses a session token"""
         if not self.aws_credentials_config:
             raise FailedToLoadCredentialsFile(
                 "Credentials could not be loaded from file %s" % self.creds_file_path
