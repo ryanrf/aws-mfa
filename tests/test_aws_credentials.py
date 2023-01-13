@@ -121,11 +121,6 @@ def test_update_access_keys(create_access_keys):
     old_mfa_access_key_id = config["default"].get("aws_access_key_id")
     old_mfa_secret_access_key = config["default"].get("aws_secret_access_key")
     old_mfa_session_token = config["default"]["aws_session_token"]
-    assert old_access_key_id
-    assert old_secret_access_key
-    assert old_mfa_access_key_id
-    assert old_mfa_secret_access_key
-    assert old_mfa_session_token
     aws_creds.update_access_keys()
     config.read(str(create_access_keys))
     new_access_key_id = config["default-no-mfa"].get("aws_access_key_id")

@@ -47,7 +47,7 @@ class AwsCredentials:
         self.logger.debug("Using profile: %s with service %s" % (profile, svc))
         return session.client(svc)
 
-    def _check_mfa_enabled(self, credentials_config: ConfigParser = None) -> None:
+    def _check_mfa_enabled(self, credentials_config: ConfigParser = None) -> bool:
         if not credentials_config:
             credentials_config = self.aws_credentials_config
         return (
