@@ -56,7 +56,7 @@ class AwsCredentials:
             and "aws_session_token" in credentials_config[self.profile]
         )
 
-    def _mfa_is_enabled(self) -> None:
+    def _use_non_mfa_profile(self) -> None:
         self.iam_client = self._get_client_for_profile(self.no_mfa_profile, "iam")
         self.sts_client = self._get_client_for_profile(self.no_mfa_profile, "sts")
 
@@ -66,7 +66,7 @@ class AwsCredentials:
         config.read(str(self.creds_file_path))
         if self._check_mfa_enabled(config):
             self.logger.debug("MFA profile already exists in AWS credentials file")
-            self._mfa_is_enabled()
+            self._use_non_mfa_profile()
         return config
 
     def get_mfa_serial(self) -> Optional[int]:
