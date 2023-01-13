@@ -87,7 +87,7 @@ def main(token, duration, profile, credentials, verbose, force):
         )
         exit(1)
     try:
-        aws_credentials.update_credentials(
+        expire = aws_credentials.update_mfa_credentials(
             new_credentials=aws_credentials.get_credentials(duration, token)
         )
     except NoMfaDeviceFound:
@@ -97,6 +97,7 @@ def main(token, duration, profile, credentials, verbose, force):
         logger.error("Token is invalid")
         exit(1)
     logger.info("Temporary credentials successfully generated")
+    logger.info(expire.strftime("New credentials will expire on %d/%m/%Y at %X %Z"))
     try:
         access_key_age = aws_credentials.get_access_key_age()
     except NoAccessKeyReturnedFromAws:

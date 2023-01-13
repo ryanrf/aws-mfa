@@ -18,7 +18,6 @@ class AwsCredentials:
         self.logger = logger
         self.profile = "default" if not profile else profile
         self.no_mfa_profile = f"{self.profile}-no-mfa"
-        self.mfa_enabled = False
         self.iam_client = self._get_client_for_profile(self.profile, "iam")
         self.sts_client = self._get_client_for_profile(self.profile, "sts")
         if self.aws_auth_method == "env":
@@ -48,7 +47,7 @@ class AwsCredentials:
         self.logger.debug("Using profile: %s with service %s" % (profile, svc))
         return session.client(svc)
 
-    def _check_mfa_enabled(self, credentials_config: ConfigParser = None) -> None:
+    def _check_mfa_enabled(self, credentials_config: ConfigParser = None) -> bool:
         if not credentials_config:
             credentials_config = self.aws_credentials_config
         return (
@@ -57,10 +56,9 @@ class AwsCredentials:
             and "aws_session_token" in credentials_config[self.profile]
         )
 
-    def _mfa_is_enabled(self) -> None:
+    def _use_non_mfa_profile(self) -> None:
         self.iam_client = self._get_client_for_profile(self.no_mfa_profile, "iam")
         self.sts_client = self._get_client_for_profile(self.no_mfa_profile, "sts")
-        self.mfa_enabled = True
 
     def load_creds_file(self) -> ConfigParser():
         self.logger.debug("Using %s as AWS credentials path" % self.creds_file_path)
@@ -68,7 +66,7 @@ class AwsCredentials:
         config.read(str(self.creds_file_path))
         if self._check_mfa_enabled(config):
             self.logger.debug("MFA profile already exists in AWS credentials file")
-            self._mfa_is_enabled()
+            self._use_non_mfa_profile()
         return config
 
     def get_mfa_serial(self) -> Optional[int]:
@@ -159,12 +157,13 @@ class AwsCredentials:
                     % (access_key, del_resp["ResponseMetadata"])
                 )
 
-    def update_credentials(self, new_credentials) -> None:
+    def update_mfa_credentials(self, new_credentials) -> None:
+        """Update the MFA credentials - the one that uses a session token"""
         if not self.aws_credentials_config:
             raise FailedToLoadCredentialsFile(
                 "Credentials could not be loaded from file %s" % self.creds_file_path
             )
-        if not self.mfa_enabled:
+        if not self._check_mfa_enabled():
             self.aws_credentials_config[
                 self.no_mfa_profile
             ] = self.aws_credentials_config[self.profile]
@@ -178,6 +177,7 @@ class AwsCredentials:
             "aws_session_token": new_credentials["Credentials"]["SessionToken"],
         }
         self.write_creds(self.aws_credentials_config)
+        return new_credentials["Credentials"]["Expiration"]
 
     def write_creds(self, aws_creds_config) -> None:
         self.logger.debug("Writing new credentials to %s" % self.creds_file_path)
