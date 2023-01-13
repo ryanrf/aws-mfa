@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "aws-mfa"
-version = "0.1.0"
+version = "0.2.0"
 description = "AWS MFA CLI tool"
-authors = ["Your Name <you@example.com>"]
+authors = ["Ryan Faircloth <ryan.faircloth@properly.ca>"]
 readme = "README.md"
 packages = [{include = "aws_mfa"}]
 
