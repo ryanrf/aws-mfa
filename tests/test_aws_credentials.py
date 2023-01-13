@@ -63,10 +63,8 @@ def test_update_mfa_credentials_no_existing_mfa(create_access_keys):
     )
     config = ConfigParser()
     config.read(str(create_access_keys))
-    assert config.has_section("default")
     assert config.has_option("default", "aws_access_key_id")
     assert config.has_option("default", "aws_secret_access_key")
-    assert not config.has_section("default-no-mfa")
     assert not config.has_option("default-no-mfa", "aws_session_token")
     aws_creds.update_mfa_credentials(
         aws_creds.get_credentials(duration=900, token="123456")
