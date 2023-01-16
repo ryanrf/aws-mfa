@@ -21,6 +21,21 @@ from aws_mfa.exceptions import (
 )
 from os import environ
 
+import boto3
+
+from aws_mfa.exceptions import (
+    AwsCredentialsMissingSection,
+    AwsCredentialsNoSharedCredentialsFileFound,
+    AwsCredentialsNotFound,
+    AwsCredentialsUsingEnvVars,
+    CouldNotCreateAwsAccessKey,
+    CouldNotDeleteAwsAccessKey,
+    FailedToLoadCredentialsFile,
+    InvalidTokenCode,
+    NoAccessKeyReturnedFromAws,
+    NoMfaDeviceFound,
+)
+
 
 class AwsCredentials:
     def _get_auth_method(self, session):
