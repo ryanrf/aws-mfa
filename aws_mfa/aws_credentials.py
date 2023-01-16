@@ -1,25 +1,10 @@
 import logging
 from configparser import ConfigParser
 from datetime import datetime
+from os import environ
 from pathlib import Path, PurePath
 from sys import exit
 from typing import Optional
-
-import boto3
-
-from aws_mfa.exceptions import (
-    AwsCredentialsMissingSection,
-    AwsCredentialsNoSharedCredentialsFileFound,
-    AwsCredentialsNotFound,
-    AwsCredentialsUsingEnvVars,
-    CouldNotCreateAwsAccessKey,
-    CouldNotDeleteAwsAccessKey,
-    FailedToLoadCredentialsFile,
-    InvalidTokenCode,
-    NoAccessKeyReturnedFromAws,
-    NoMfaDeviceFound,
-)
-from os import environ
 
 import boto3
 
