@@ -6,6 +6,7 @@ from pathlib import Path, PurePath
 from datetime import datetime
 from typing import Optional
 from aws_mfa.exceptions import *
+from os import environ
 
 
 class AwsCredentials:
@@ -20,7 +21,7 @@ class AwsCredentials:
         self.no_mfa_profile = f"{self.profile}-no-mfa"
         self.iam_client = self._get_client_for_profile(self.profile, "iam")
         self.sts_client = self._get_client_for_profile(self.profile, "sts")
-        if self.aws_auth_method == "env":
+        if self.aws_auth_method == "env" or environ.get("AWS_ACCESS_KEY_ID"):
             raise AwsCredentialsUsingEnvVars(
                 "Using environment variables is not currently supported"
             )
@@ -44,6 +45,7 @@ class AwsCredentials:
     def _get_client_for_profile(self, profile: str, svc: str) -> boto3.client:
         session = boto3.Session(profile_name=profile)
         self.aws_auth_method = self._get_auth_method(session)
+        self.logger.debug("AWS authentication method: %s" % self.aws_auth_method)
         self.logger.debug("Using profile: %s with service %s" % (profile, svc))
         return session.client(svc)
 
