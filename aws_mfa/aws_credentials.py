@@ -19,6 +19,7 @@ from aws_mfa.exceptions import (
     NoAccessKeyReturnedFromAws,
     NoMfaDeviceFound,
 )
+from os import environ
 
 
 class AwsCredentials:
@@ -45,7 +46,7 @@ class AwsCredentials:
         self.no_mfa_profile = f"{self.profile}-no-mfa"
         self.iam_client = self._get_client_for_profile(self.profile, "iam")
         self.sts_client = self._get_client_for_profile(self.profile, "sts")
-        if self.aws_auth_method == "env":
+        if self.aws_auth_method == "env" or environ.get("AWS_ACCESS_KEY_ID"):
             raise AwsCredentialsUsingEnvVars(
                 "Using environment variables is not currently supported"
             )
