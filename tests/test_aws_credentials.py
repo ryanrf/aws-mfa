@@ -1,11 +1,14 @@
-import pytest
-import boto3
-from moto import mock_iam, mock_sts
-from aws_mfa.aws_credentials import AwsCredentials
-from freezegun import freeze_time
 from configparser import ConfigParser
-from os import path, remove
 from datetime import datetime, timedelta
+from os import path, remove
+
+import boto3
+import pytest
+from freezegun import freeze_time
+from moto import mock_iam, mock_sts
+
+from aws_mfa.aws_credentials import AwsCredentials
+
 
 # TODO:
 # check_mfa_enabled

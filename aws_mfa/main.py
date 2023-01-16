@@ -1,10 +1,21 @@
 #!/usr/bin/env python
-import click
 import logging
-from sys import stdout, exit
+from sys import exit, stdout
+
+import click
+
 from aws_mfa.aws_credentials import AwsCredentials
-from aws_mfa.exceptions import *
-from aws_mfa.constants import *
+from aws_mfa.constants import ACCESS_KEY_AGE_LIMIT_DAYS, SETUP_HELP
+from aws_mfa.exceptions import (
+    AwsCredentialsNoSharedCredentialsFileFound,
+    AwsCredentialsNotFound,
+    AwsCredentialsUsingEnvVars,
+    CouldNotCreateAwsAccessKey,
+    CouldNotDeleteAwsAccessKey,
+    InvalidTokenCode,
+    NoAccessKeyReturnedFromAws,
+    NoMfaDeviceFound,
+)
 
 logger = logging.getLogger(__name__)
 ch = logging.StreamHandler(stdout)
