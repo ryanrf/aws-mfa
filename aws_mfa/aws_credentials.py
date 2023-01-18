@@ -129,9 +129,7 @@ class AwsCredentials:
 
     def update_access_keys(self) -> None:
         """Update the non-MFA access keys by deleting them then creating new ones"""
-        try:
-            type(self.mfa_iam_client)
-        except AttributeError:
+        if not self.mfa_iam_client:
             self.mfa_iam_client = self._get_client_for_profile(self.profile, "iam")
         # If there is a 'no_mfa_profile' section and there is a session token in the profile we can assume this tool has been run
         if self._check_mfa_enabled():
