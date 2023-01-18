@@ -7,7 +7,7 @@ import pytest
 from freezegun import freeze_time
 from moto import mock_iam, mock_sts
 
-from aws_mfa.aws_credentials import AwsCredentials
+from src.aws_credentials import AwsCredentials
 
 
 # TODO:
@@ -38,7 +38,7 @@ def create_access_keys(mocker):
         }
         creds_path = f"{path.dirname(__file__)}/data/aws_credentials"
         mocker.patch(
-            "aws_mfa.aws_credentials.AwsCredentials._get_auth_method",
+            "src.aws_credentials.AwsCredentials._get_auth_method",
             return_value="shared-credentials-file",
         )
         with open(creds_path, "x") as f:

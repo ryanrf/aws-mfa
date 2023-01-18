@@ -7,7 +7,7 @@ from typing import Optional
 
 import boto3
 
-from aws_mfa.exceptions import (
+from src.exceptions import (
     AwsCredentialsMissingSection,
     AwsCredentialsNoSharedCredentialsFileFound,
     AwsCredentialsNotFound,
@@ -22,19 +22,6 @@ from aws_mfa.exceptions import (
 
 
 class AwsCredentials:
-    def _get_auth_method(self, session):
-        if session.get_credentials():
-            return session.get_credentials().method
-        else:
-            raise AwsCredentialsNotFound("No AWS credentials were found")
-
-    def _get_client_for_profile(self, profile: str, svc: str) -> boto3.client:
-        session = boto3.Session(profile_name=profile)
-        self.aws_auth_method = self._get_auth_method(session)
-        self.logger.debug("AWS authentication method: %s" % self.aws_auth_method)
-        self.logger.debug("Using profile: %s with service %s" % (profile, svc))
-        return session.client(svc)
-
     def __init__(
         self,
         creds_file_path: str,
@@ -46,7 +33,8 @@ class AwsCredentials:
         self.no_mfa_profile = f"{self.profile}-no-mfa"
         self.iam_client = self._get_client_for_profile(self.profile, "iam")
         self.sts_client = self._get_client_for_profile(self.profile, "sts")
-        if self.aws_auth_method == "env" or environ.get("AWS_ACCESS_KEY_ID"):
+        self.mfa_iam_client = None
+        if self.aws_auth_method == "env":
             raise AwsCredentialsUsingEnvVars(
                 "Using environment variables is not currently supported"
             )
@@ -60,10 +48,24 @@ class AwsCredentials:
         self.aws_credentials_config = self.load_creds_file()
         self.username = self.iam_client.get_user()["User"]["UserName"]
 
+    def _get_auth_method(self, session):
+        auth_method = session.get_credentials()
+        if auth_method:
+            return "env" if environ.get("AWS_ACCESS_KEY_ID") else auth_method
+        else:
+            raise AwsCredentialsNotFound("No AWS credentials were found")
+
+    def _get_client_for_profile(self, profile: str, svc: str) -> boto3.client:
+        session = boto3.Session(profile_name=profile)
+        self.aws_auth_method = self._get_auth_method(session)
+        self.logger.debug("AWS authentication method: %s" % self.aws_auth_method)
+        self.logger.debug("Using profile: %s with service %s" % (profile, svc))
+        return session.client(svc)
+
     def _check_mfa_enabled(
         self, credentials_config: ConfigParser = ConfigParser()
     ) -> bool:
-        if not credentials_config:
+        if not credentials_config.sections():
             credentials_config = self.aws_credentials_config
         return (
             self.no_mfa_profile in credentials_config.sections()
