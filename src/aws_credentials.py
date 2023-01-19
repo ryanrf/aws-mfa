@@ -1,12 +1,24 @@
-import boto3
 import logging
-from sys import exit
 from configparser import ConfigParser
-from pathlib import Path, PurePath
 from datetime import datetime
-from typing import Optional
-from aws_mfa.exceptions import *
 from os import environ
+from pathlib import Path, PurePath
+from typing import Optional
+
+import boto3
+
+from src.exceptions import (
+    AwsCredentialsMissingSection,
+    AwsCredentialsNoSharedCredentialsFileFound,
+    AwsCredentialsNotFound,
+    AwsCredentialsUsingEnvVars,
+    CouldNotCreateAwsAccessKey,
+    CouldNotDeleteAwsAccessKey,
+    FailedToLoadCredentialsFile,
+    InvalidTokenCode,
+    NoAccessKeyReturnedFromAws,
+    NoMfaDeviceFound,
+)
 
 
 class AwsCredentials:
@@ -21,7 +33,8 @@ class AwsCredentials:
         self.no_mfa_profile = f"{self.profile}-no-mfa"
         self.iam_client = self._get_client_for_profile(self.profile, "iam")
         self.sts_client = self._get_client_for_profile(self.profile, "sts")
-        if self.aws_auth_method == "env" or environ.get("AWS_ACCESS_KEY_ID"):
+        self.mfa_iam_client = None
+        if self.aws_auth_method == "env":
             raise AwsCredentialsUsingEnvVars(
                 "Using environment variables is not currently supported"
             )
@@ -33,12 +46,12 @@ class AwsCredentials:
             else PurePath(Path.home(), ".aws/credentials")
         )
         self.aws_credentials_config = self.load_creds_file()
-        self.mfa_iam_client = None
         self.username = self.iam_client.get_user()["User"]["UserName"]
 
     def _get_auth_method(self, session):
-        if session.get_credentials():
-            return session.get_credentials().method
+        auth_method = session.get_credentials()
+        if auth_method:
+            return "env" if environ.get("AWS_ACCESS_KEY_ID") else auth_method
         else:
             raise AwsCredentialsNotFound("No AWS credentials were found")
 
@@ -49,8 +62,10 @@ class AwsCredentials:
         self.logger.debug("Using profile: %s with service %s" % (profile, svc))
         return session.client(svc)
 
-    def _check_mfa_enabled(self, credentials_config: ConfigParser = None) -> bool:
-        if not credentials_config:
+    def _check_mfa_enabled(
+        self, credentials_config: ConfigParser = ConfigParser()
+    ) -> bool:
+        if not credentials_config.sections():
             credentials_config = self.aws_credentials_config
         return (
             self.no_mfa_profile in credentials_config.sections()
@@ -62,7 +77,7 @@ class AwsCredentials:
         self.iam_client = self._get_client_for_profile(self.no_mfa_profile, "iam")
         self.sts_client = self._get_client_for_profile(self.no_mfa_profile, "sts")
 
-    def load_creds_file(self) -> ConfigParser():
+    def load_creds_file(self) -> ConfigParser:
         self.logger.debug("Using %s as AWS credentials path" % self.creds_file_path)
         config = ConfigParser()
         config.read(str(self.creds_file_path))
@@ -90,8 +105,10 @@ class AwsCredentials:
         except self.sts_client.exceptions.ClientError as e:
             if "invalid MFA one time pass code" in str(e):
                 raise InvalidTokenCode("Token code is invalid")
+            else:
+                raise e
 
-    def get_access_key_age(self, profile: str = None) -> Optional[int]:
+    def get_access_key_age(self, profile: str = "") -> Optional[int]:
         """Gets access key using specified profile, or if not specified defaults to MFA enabled profile to prevent locking out the defaul profile when the access keys are deleted"""
         profile = self.no_mfa_profile if not profile else profile
         self.mfa_iam_client = self._get_client_for_profile(self.profile, "iam")
@@ -117,7 +134,7 @@ class AwsCredentials:
         if not self.mfa_iam_client:
             self.mfa_iam_client = self._get_client_for_profile(self.profile, "iam")
         # If there is a 'no_mfa_profile' section and there is a session token in the profile we can assume this tool has been run
-        if self._check_mfa_enabled:
+        if self._check_mfa_enabled():
             access_key = self.aws_credentials_config[self.no_mfa_profile][
                 "aws_access_key_id"
             ]
