@@ -22,34 +22,10 @@ from src.exceptions import (
 
 
 class AwsCredentials:
-    def __init__(
-        self,
-        creds_file_path: str,
-        profile: str,
-        logger: logging.Logger = logging.getLogger(),
-    ):
-        self.logger = logger
-        self.profile = "default" if not profile else profile
-        self.no_mfa_profile = f"{self.profile}-no-mfa"
-        self.iam_client = self._get_client_for_profile(self.profile, "iam")
-        self.sts_client = self._get_client_for_profile(self.profile, "sts")
-        self.mfa_iam_client = None
-        if self.aws_auth_method == "env":
-            raise AwsCredentialsUsingEnvVars(
-                "Using environment variables is not currently supported"
-            )
-        elif self.aws_auth_method != "shared-credentials-file":
-            raise AwsCredentialsNoSharedCredentialsFileFound
-        self.creds_file_path = (
-            PurePath(creds_file_path)
-            if creds_file_path
-            else PurePath(Path.home(), ".aws/credentials")
-        )
-        self.aws_credentials_config = self.load_creds_file()
-        self.username = self.iam_client.get_user()["User"]["UserName"]
+    mfa_iam_client: Optional[boto3.client] = None
 
     def _get_auth_method(self, session):
-        auth_method = session.get_credentials()
+        auth_method = session.get_credentials().method
         if auth_method:
             return "env" if environ.get("AWS_ACCESS_KEY_ID") else auth_method
         else:
@@ -61,6 +37,31 @@ class AwsCredentials:
         self.logger.debug("AWS authentication method: %s" % self.aws_auth_method)
         self.logger.debug("Using profile: %s with service %s" % (profile, svc))
         return session.client(svc)
+
+    def __init__(
+        self,
+        creds_file_path: str,
+        profile: str,
+        logger: logging.Logger = logging.getLogger(),
+    ):
+        self.logger = logger
+        self.profile = "default" if not profile else profile
+        self.no_mfa_profile = f"{self.profile}-no-mfa"
+        if creds_file_path:
+            self.creds_file_path = PurePath(creds_file_path)
+            environ["AWS_SHARED_CREDENTIALS_FILE"] = str(self.creds_file_path)
+        else:
+            self.creds_file_path = PurePath(Path.home(), ".aws/credentials")
+        self.iam_client = self._get_client_for_profile(self.profile, "iam")
+        self.sts_client = self._get_client_for_profile(self.profile, "sts")
+        if self.aws_auth_method == "env":
+            raise AwsCredentialsUsingEnvVars(
+                "Using environment variables is not currently supported"
+            )
+        elif self.aws_auth_method != "shared-credentials-file":
+            raise AwsCredentialsNoSharedCredentialsFileFound
+        self.aws_credentials_config = self.load_creds_file()
+        self.username = self.iam_client.get_user()["User"]["UserName"]
 
     def _check_mfa_enabled(
         self, credentials_config: ConfigParser = ConfigParser()
@@ -111,14 +112,14 @@ class AwsCredentials:
     def get_access_key_age(self, profile: str = "") -> Optional[int]:
         """Gets access key using specified profile, or if not specified defaults to MFA enabled profile to prevent locking out the defaul profile when the access keys are deleted"""
         profile = self.no_mfa_profile if not profile else profile
-        self.mfa_iam_client = self._get_client_for_profile(self.profile, "iam")
+        mfa_iam_client = self._get_client_for_profile(self.profile, "iam")
         try:
             access_key = self.aws_credentials_config[profile]["aws_access_key_id"]
         except KeyError:
             raise AwsCredentialsMissingSection(
                 "section %s not found in %s" % (profile, str(self.creds_file_path))
             )
-        resp = self.mfa_iam_client.list_access_keys(UserName=self.username)[
+        resp = mfa_iam_client.list_access_keys(UserName=self.username)[
             "AccessKeyMetadata"
         ]
         for key in resp:

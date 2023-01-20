@@ -80,27 +80,20 @@ def main(token, duration, profile, credentials, verbose, force):
         )
     except AwsCredentialsUsingEnvVars:
         logger.error(
-            (
-                "Using environment variables to store AWS credentials is not supported by this tool.",
-                "\n\nPlease unset 'AWS_ACCESS_KEY' and 'AWS_SECRET_ACCESS_KEY' environment variables and rerun this tool.",
-                SETUP_HELP,
-            )
+            "Using environment variables to store AWS credentials is not supported by this tool.\n\nPlease unset 'AWS_ACCESS_KEY' and 'AWS_SECRET_ACCESS_KEY' environment variables and rerun this tool.\n %s"
+            % SETUP_HELP
         )
         exit(1)
     except AwsCredentialsNotFound:
         logger.error(
-            (
-                "Could not find any AWS credentials. This could be an issue of missing credentials file, or specifying the wrong profile.\n%s",
-                SETUP_HELP,
-            )
+            "Could not find any AWS credentials. This could be an issue of missing credentials file, or specifying the wrong profile.\n%s"
+            % SETUP_HELP
         )
         exit(1)
     except AwsCredentialsNoSharedCredentialsFileFound:
         logger.error(
-            (
-                "Unsupported authentication method detected.\n\nThe only authentication method supported by this tool is using a shared credentials file (i.e. ~/.aws/credentials)\n %s",
-                SETUP_HELP,
-            )
+            "Unsupported authentication method detected.\n\nThe only authentication method supported by this tool is using a shared credentials file (i.e. ~/.aws/credentials)\n %s"
+            % SETUP_HELP
         )
         exit(1)
     try:

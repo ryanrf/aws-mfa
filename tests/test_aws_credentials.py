@@ -1,5 +1,4 @@
 from configparser import ConfigParser
-from datetime import datetime, timedelta
 from os import path, remove
 
 import boto3
@@ -36,7 +35,7 @@ def create_access_keys(mocker):
             "aws_access_key_id": resp["AccessKey"]["AccessKeyId"],
             "aws_secret_access_key": resp["AccessKey"]["SecretAccessKey"],
         }
-        creds_path = f"{path.dirname(__file__)}/data/aws_credentials"
+        creds_path = f"{path.dirname(__file__)}/aws_credentials"
         mocker.patch(
             "src.aws_credentials.AwsCredentials._get_auth_method",
             return_value="shared-credentials-file",

@@ -1,58 +1,37 @@
 name: Lint & Test
 
-on:
-  workflow_call:
-    inputs:
-      python_version_file:
-        description: "The location of .python-version file of the caller workflow repository"
-        default: ".python-version"
-        type: string
+on: push
+
 jobs:
-  python_version:
-    name: Python Version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.python_version.outputs.version }}
-    steps:
-      - name: Checkout python version file
-        uses: Bhacaz/checkout-files@v2
-        with:
-          files: ${{ inputs.python_version_file }}
-          branch: ${{ github.head_ref || github.ref_name }}
-
-      - name: Python Version
-        id: python_version
-        run: echo ::set-output name=version::$(cat ${{ inputs.python_version_file }})
-
-      - name: Report extracted Python version
-        run: echo ::debug::${{ steps.python_version.outputs.version }}
   lint_and_test:
     name: Lint & Test
-    needs: python_version
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: '.'
     steps:
       - uses: actions/checkout@v3
+      
+      - name: Python Version
+        id: python_version
+        run: echo "version=$(cat .python-version)" >> $GITHUB_OUTPUT
 
       - uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # pin version for poetry as higher versions have PEP 440 versioning issues
       - name: Install poetry
         run: pipx install poetry==1.2.1
 
       - uses: actions/setup-python@v4
         with:
-          python-version: ${{ needs.python_version.outputs.version }}
+          python-version: ${{ steps.python_version.outputs.version }}
           cache: "poetry"
 
-      # Poetry must explicitly be told to use the expected version https://github.com/actions/setup-python/issues/374
       - name: Install dependencies
         run: |
-          poetry env use ${{ needs.python_version.outputs.version }}
+          poetry env use ${{ steps.python_version.outputs.version }}
+          poetry config http-basic.properly "${{ secrets.PIP_GEMFURY_DEPLOY_TOKEN }}" NOPASS
           poetry install
         
       - name: Lint
