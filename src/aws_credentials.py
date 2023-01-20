@@ -25,7 +25,10 @@ class AwsCredentials:
     mfa_iam_client: Optional[boto3.client] = None
 
     def _get_auth_method(self, session):
-        auth_method = session.get_credentials().method
+        try:
+            auth_method = session.get_credentials().method
+        except AttributeError:
+            raise AwsCredentialsNotFound("No AWS credentials were found")
         if auth_method:
             return "env" if environ.get("AWS_ACCESS_KEY_ID") else auth_method
         else:
@@ -50,6 +53,9 @@ class AwsCredentials:
         if creds_file_path:
             self.creds_file_path = PurePath(creds_file_path)
             environ["AWS_SHARED_CREDENTIALS_FILE"] = str(self.creds_file_path)
+            self.logger.info(
+                "Shared credentials file is in non-default location. To accomodate this the environment variable 'AWS_SHARED_CREDENTIALS_FILE' has been set."
+            )
         else:
             self.creds_file_path = PurePath(Path.home(), ".aws/credentials")
         self.iam_client = self._get_client_for_profile(self.profile, "iam")
