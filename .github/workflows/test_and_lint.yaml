@@ -28,11 +28,10 @@ jobs:
           python-version: ${{ steps.python_version.outputs.version }}
           cache: "poetry"
 
-      - name: Install dependencies
+      - name: Install (dev) dependencies
         run: |
           poetry env use ${{ steps.python_version.outputs.version }}
-          poetry config http-basic.properly "${{ secrets.PIP_GEMFURY_DEPLOY_TOKEN }}" NOPASS
-          poetry install
+          poetry install --with dev
         
       - name: Lint
         run: poetry run inv lint
@@ -44,7 +43,7 @@ jobs:
         run: poetry run inv test
 
       - name: Publish test results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: "./tests/*.xml"

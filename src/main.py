@@ -69,6 +69,7 @@ logger.addHandler(ch)
     default=False,
     help="Force the replacement of non-MFA access keys",
 )
+@click.version_option(package_name="aws-mfa", prog_name="AWS MFA CLI tool")
 def main(token, duration, profile, credentials, verbose, force):
     if verbose:
         logger.setLevel(logging.DEBUG)
