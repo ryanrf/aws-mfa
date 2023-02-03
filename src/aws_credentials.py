@@ -8,6 +8,7 @@ from typing import Optional
 import boto3
 
 from src.exceptions import (
+    AwsBadCredentials,
     AwsCredentialsMissingSection,
     AwsCredentialsNoSharedCredentialsFileFound,
     AwsCredentialsNotFound,
@@ -67,7 +68,11 @@ class AwsCredentials:
         elif self.aws_auth_method != "shared-credentials-file":
             raise AwsCredentialsNoSharedCredentialsFileFound
         self.aws_credentials_config = self.load_creds_file()
-        self.username = self.iam_client.get_user()["User"]["UserName"]
+        try:
+            self.username = self.iam_client.get_user()["User"]["UserName"]
+        except self.iam_client.exceptions.ClientError as e:
+            if e.__dict__["response"]["Error"]["Code"] == "InvalidClientTokenId":
+                raise AwsBadCredentials
 
     def _check_mfa_enabled(
         self, credentials_config: ConfigParser = ConfigParser()

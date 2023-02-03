@@ -7,6 +7,7 @@ import click
 from src.aws_credentials import AwsCredentials
 from src.constants import ACCESS_KEY_AGE_LIMIT_DAYS, SETUP_HELP
 from src.exceptions import (
+    AwsBadCredentials,
     AwsCredentialsNoSharedCredentialsFileFound,
     AwsCredentialsNotFound,
     AwsCredentialsUsingEnvVars,
@@ -97,6 +98,9 @@ def main(token, duration, profile, credentials, verbose, force):
             % SETUP_HELP
         )
         exit(1)
+    except AwsBadCredentials:
+        logger.error("Invalid access key or secret key.")
+        exit(1)
     try:
         expire = aws_credentials.update_mfa_credentials(
             new_credentials=aws_credentials.get_credentials(duration, token)
@@ -108,7 +112,7 @@ def main(token, duration, profile, credentials, verbose, force):
         logger.error("Token is invalid")
         exit(1)
     logger.info("Temporary credentials successfully generated")
-    logger.info(expire.strftime("New credentials will expire on %d/%m/%Y at %X %Z"))
+    logger.info(expire.strftime("New credentials will expire on %d/%b/%Y at %X %Z"))
     try:
         access_key_age = aws_credentials.get_access_key_age()
     except NoAccessKeyReturnedFromAws:

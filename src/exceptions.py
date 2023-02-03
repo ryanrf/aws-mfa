@@ -14,6 +14,10 @@ class AwsCredentialsNotFound(Exception):
     pass
 
 
+class AwsBadCredentials(Exception):
+    pass
+
+
 class AwsCredentialsNoSharedCredentialsFileFound(Exception):
     pass
 
