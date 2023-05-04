@@ -16,10 +16,6 @@ jobs:
         id: python_version
         run: echo "version=$(cat .python-version)" >> $GITHUB_OUTPUT
 
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
       - name: Install poetry
         run: pipx install poetry==1.2.1
 
