@@ -2,7 +2,7 @@
 name = "aws-mfa"
 version = "0.5.2"
 description = "AWS MFA CLI tool"
-authors = ["Ryan Faircloth <ryan.faircloth@properly.ca>"]
+authors = ["Ryan Faircloth <ryan@faircloth.ca>"]
 readme = "README.md"
 packages = [{include = "src"}]
 
@@ -28,14 +28,6 @@ isort = "^5.11.4"
 mypy = "^0.991"
 invoke = "^1.7.3"
 ssort = { version = "^0.11.6", python = ">=3.8" }
-
-
-
-[[tool.poetry.source]]
-name = "properly"
-url = "https://pypi.fury.io/properly/"
-default = false
-secondary = false
 
 [build-system]
 requires = ["poetry-core"]
