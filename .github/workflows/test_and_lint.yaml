@@ -9,6 +9,10 @@ jobs:
     defaults:
       run:
         working-directory: '.'
+    permissions:
+      checks: write
+      pull-requests: write
+
     steps:
       - uses: actions/checkout@v3
       
